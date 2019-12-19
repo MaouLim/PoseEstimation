@@ -90,8 +90,8 @@ int bundle_adjustment_gaussnewton(
 
 			mat2x6f jacobian;
 			jacobian <<
-				-fx / z2,     0.f, fx * x / z2,   fx * x * y / z2, -fx - fx * x2 / z2,  fx * y / z,
-				     0.f, -fy / z, fy * y / z2, fy + fy * y2 / z2,   -fy * x * y / z2, -fy * x / z;
+				-fx / z,     0.f, fx * x / z2,   fx * x * y / z2, -fx - fx * x2 / z2,  fx * y / z,
+				    0.f, -fy / z, fy * y / z2, fy + fy * y2 / z2,   -fy * x * y / z2, -fy * x / z;
 
 			h += jacobian.transpose() * jacobian;
 			g += jacobian.transpose() * -err;
