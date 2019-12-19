@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
 		std::cout << "time used: "
 		          << chrono::duration_cast<chrono::milliseconds>(end - start).count()
 		          << std::endl;
-	 }
+	}
 
 	return 0;
 }
