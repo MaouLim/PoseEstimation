@@ -113,14 +113,14 @@ int bundle_adjustment_gaussnewton(
 	return iteration;
 }
 
-void bundle_adjustment_g2o(
-	const std::vector<vec3f>& obj_points,
-	const std::vector<vec2f>& img_points,
-	const cv::Mat&            cam_mat,
-	Sophus::SE3f&             pose
-) {
-	typedef ;
-}
+//void bundle_adjustment_g2o(
+//	const std::vector<vec3f>& obj_points,
+//	const std::vector<vec2f>& img_points,
+//	const cv::Mat&            cam_mat,
+//	Sophus::SE3f&             pose
+//) {
+//	typedef ;
+//}
 
 const std::string image1_path = "pose3d/1.png";
 const std::string depth1_path = "pose3d/1_depth.png";
