@@ -8,42 +8,9 @@
 #include <Eigen/Core>
 #include <sophus/se3.hpp>
 
+#include "orb_extract.hpp"
+
 namespace chrono = std::chrono;
-
-void extract_orb(
-	const cv::Mat& img1, const cv::Mat& img2,
-	std::vector<cv::KeyPoint>& key_points1,
-	std::vector<cv::KeyPoint>& key_points2,
-	std::vector<cv::DMatch>&   matches
-) {
-	cv::Ptr<cv::Feature2D> orb = cv::ORB::create();
-	cv::Ptr<cv::DescriptorMatcher> matcher = cv::BFMatcher::create(cv::NORM_HAMMING);
-
-	orb->detect(img1, key_points1);
-	orb->detect(img2, key_points2);
-
-	cv::Mat desc1, desc2;
-	orb->compute(img1, key_points1, desc1);
-	orb->compute(img2, key_points2, desc2);
-
-	matcher->match(desc1, desc2, matches);
-
-	double min_dis = UINT32_MAX, max_dis = 0.;
-
-	for (auto i = 0; i < desc1.rows; ++i) {
-		double dis = matches[i].distance;
-		if (dis < min_dis) { min_dis = dis; }
-		if (max_dis < dis) { max_dis = dis; }
-	}
-
-	int count_good = 0;
-	for (auto i = 0; i < desc1.rows; ++i) {
-		if (matches[i].distance <= min_dis * 3) {
-			matches[count_good++] = matches[i];
-		}
-	}
-	matches.resize(count_good);
-}
 
 typedef Eigen::Vector3d             vec3d;
 typedef Eigen::Vector2d             vec2d;
@@ -150,7 +117,6 @@ int main(int argc, char** argv) {
 		auto kp2 = keypoints2[matches[i].trainIdx].pt;
 
 		uint16_t d = depth1.at<uint16_t>(kp1.y, kp1.x);
-		std::cout << d << std::endl;
 		if (0 == d) { continue; }
 
 		double z = double(d) * depth_scale;

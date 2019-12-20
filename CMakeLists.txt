@@ -24,3 +24,6 @@ target_link_libraries(Calibration ${OpenCV_LIBS})
 
 add_executable(PoseEstimation2D3D pose_estimation_2d3d.cpp)
 target_link_libraries(PoseEstimation2D3D ${OpenCV_LIBS})
+
+add_executable(PoseEstimation3D3D pose_estimation_3d3d.cpp)
+target_link_libraries(PoseEstimation3D3D ${OpenCV_LIBS})
