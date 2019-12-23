@@ -9,6 +9,9 @@
 #include <Eigen/Dense>
 #include <Eigen/SVD>
 
+#include <sophus/se3.hpp>
+#include <sophus/so3.hpp>
+
 #include "orb_extract.hpp"
 
 namespace chrono = std::chrono;
@@ -102,12 +105,12 @@ inline mat3d rodriguez(const vec3d& x) {
 	const double cos_theta = std::cos(theta);
 	const double sin_theta = std::sin(theta);
 	const mat3d identity = mat3d::Identity();
-	mat3d x_hat;
-	x_hat <<
-	       0., -x[2],  x[1],
-	     x[2],    0., -x[0],
-	    -x[1],  x[0],    0.;
-	return identity * cos_theta + (1. - cos_theta) * rho * rho.transpose() + x_hat * sin_theta;
+	mat3d rho_hat;
+	rho_hat <<
+	         0., -rho[2],  rho[1],
+		 rho[2],      0., -rho[0],
+	    -rho[1],  rho[0],      0.;
+	return identity * cos_theta + (1. - cos_theta) * rho * rho.transpose() + rho_hat * sin_theta;
 }
 
 inline vec3d jacobian(const vec6d& x) {
@@ -158,32 +161,34 @@ int icp_gauss_newton(
 			auto& p1 = points1[i];
 			auto& p2 = points2[i];
 			auto p2_trans = rotation * p2 + translation;
+
 			double x = p2_trans[0], y = p2_trans[1], z = p2_trans[2];
 
 			auto err = p1 - p2_trans;
 			loss += 0.5 * err.squaredNorm();
 
-			mat3x6d jacobian;
-			jacobian <<
+			mat3x6d jacobian_mat;
+			jacobian_mat <<
 				-1.,  0.,  0., 0., -z,  y,
 				 0., -1.,  0.,  z, 0., -x,
 				 0.,  0., -1., -y,  x, 0.;
 
-			h += jacobian.transpose() * jacobian;
-			g += jacobian.transpose() * -err;
+			h += jacobian_mat.transpose() * jacobian_mat;
+			g += jacobian_mat.transpose() * -err;
 		}
 
-		auto dx = h.ldlt().solve(g);
+		vec6d dx = h.ldlt().solve(g);
 
 		if (std::isnan(dx[0])) { std::cerr << "result is nan." << std::endl; break; }
-		if (0 < iter && prev_loss < loss * 3) { std::cerr << "loss is increasing." << std::endl; break; }
-		if (dx.norm() < 1e-16) { break; }
+		//if (0 < iter && prev_loss < loss) { std::cerr << "loss is increasing." << std::endl; break; }
+		if (dx.norm() < 1e-8) { break; }
 
-		auto delta_t = jacobian(dx);
-		auto delta_r = rodriguez(dx.tail<3>());
+		vec3d delta_t = jacobian(dx);
+		mat3d delta_r = rodriguez(dx.tail<3>());
 
 		translation = delta_r * translation + delta_t;
-		rotation *= delta_r;
+		rotation = delta_r * rotation ;
+
 		++iter;
 	}
 
@@ -200,6 +205,8 @@ int main(int argc, char** argv) {
 
 	std::vector<vec3d> pts1, pts2;
 	get_3d_point_sets(cam_mat, pts1, pts2);
+
+	std::cout << "n_pair: " << pts1.size() << std::endl;
 
 	/**
 	 * @brief self-implementation of icp using svd decomposition
@@ -224,7 +231,9 @@ int main(int argc, char** argv) {
 		mat3d rotation = mat3d::Identity();
 		vec3d translation = vec3d::Zero();
 		chrono::steady_clock::time_point start = chrono::steady_clock::now();
-		icp_gauss_newton(pts1, pts2, rotation, translation);
+		std::cout << "iterations: "
+		          << icp_gauss_newton(pts1, pts2, rotation, translation)
+		          << std::endl;
 		chrono::steady_clock::time_point end = chrono::steady_clock::now();
 
 		std::cout << "rotation:\n" << rotation << std::endl;
