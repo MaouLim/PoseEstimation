@@ -9,9 +9,6 @@
 #include <Eigen/Dense>
 #include <Eigen/SVD>
 
-#include <sophus/se3.hpp>
-#include <sophus/so3.hpp>
-
 #include "orb_extract.hpp"
 
 namespace chrono = std::chrono;
