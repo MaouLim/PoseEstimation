@@ -67,7 +67,7 @@ int bundle_adjustment_gaussnewton(
 		vec6d dx = h.ldlt().solve(g);
 
 		if (std::isnan(dx[0])) { std::cerr << "result is nan." << std::endl; break; }
-		if (0 < iteration && prev_loss < loss * 1.1) { std::cerr << "loss is increasing." << std::endl; break; }
+		if (0 < iteration && prev_loss < loss) { std::cerr << "loss is increasing." << std::endl; break; }
 		if (dx.norm() < 1e-8) { break; }
 
 		pose = Sophus::SE3d::exp(dx) * pose;
@@ -75,8 +75,6 @@ int bundle_adjustment_gaussnewton(
 		++iteration;
 	}
 
-	//std::cout << "iteration: " << iteration << std::endl;
-	//std::cout << "loss: " << prev_loss << std::endl;
 	return iteration;
 }
 
