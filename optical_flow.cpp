@@ -40,7 +40,8 @@ void lk_optical_flow_single1(
 	const std::vector<cv::Point2f>&  pts_prev,
 	size_t                           win_sz,
 	std::vector<cv::Point2f>&        pts_next,
-	std::vector<uint8_t>&            status
+	std::vector<uint8_t>&            status,
+	bool                             use_init = false
 ) {
 	assert(1 == win_sz % 2);
 
@@ -54,8 +55,12 @@ void lk_optical_flow_single1(
 	for (auto i = 0; i < n_points; ++i) {
 
 		const cv::Point2f& p = pts_prev[i];
-		double u = 0., v = 0.;
 		double loss = 0., prev_loss = 0.;
+		double u = 0., v = 0.;
+		if (use_init) {
+			u = pts_next[i].x - pts_prev[i].x;
+			v = pts_next[i].y - pts_prev[i].y;
+		}
 
 		mat2d hessian = mat2d::Zero();
 		vec2d g       = vec2d::Zero();
@@ -109,7 +114,8 @@ void lk_optical_flow_single2(
 	const std::vector<cv::Point2f>&  pts_prev,
 	size_t                           win_sz,
 	std::vector<cv::Point2f>&        pts_next,
-	std::vector<uint8_t>&            status
+	std::vector<uint8_t>&            status,
+	bool                             use_init = false
 ) {
 	assert(1 == win_sz % 2);
 
@@ -124,6 +130,10 @@ void lk_optical_flow_single2(
 	for (auto i = 0; i < n_points; ++i) {
 		const cv::Point2f& p = pts_prev[i];
 		double u = 0., v = 0.;
+		if (use_init) {
+			u = pts_next[i].x - pts_prev[i].x;
+			v = pts_next[i].y - pts_prev[i].y;
+		}
 
 		auto iter = 0;
 
@@ -135,10 +145,24 @@ void lk_optical_flow_single2(
 			auto k = 0;
 			for (auto x = -half_w; x <= half_w; ++x) {
 				for (auto y = -half_w; y <= half_w; ++y) {
+					///**
 					a(k, 0) = 0.25 * (_val(next, p.x + u + x + 1, p.y + v + y) + _val(prev, p.x + x + 1, p.y + y) -
-						                   _val(next, p.x + u + x - 1, p.y + v + y) - _val(prev, p.x + x - 1, p.y + y));
+						              _val(next, p.x + u + x - 1, p.y + v + y) - _val(prev, p.x + x - 1, p.y + y));
 					a(k, 1) = 0.25 * (_val(next, p.x + u + x, p.y + v + y + 1) + _val(prev, p.x + x, p.y + y + 1) -
-					                       _val(next, p.x + u + x, p.y + v + y - 1) - _val(prev, p.x + x, p.y + y - 1));
+					                  _val(next, p.x + u + x, p.y + v + y - 1) - _val(prev, p.x + x, p.y + y - 1));
+					//*/
+					/** @brief same as single1
+					a(k, 0) = 0.5 * (_val(next, p.x + u + x + 1, p.y + v + y) -
+					                 _val(next, p.x + u + x - 1, p.y + v + y));
+					a(k, 1) = 0.5 * (_val(next, p.x + u + x, p.y + v + y + 1) -
+						             _val(next, p.x + u + x, p.y + v + y - 1));
+					*/
+					/**
+					a(k, 0) = 0.5 * (_val(prev, p.x + x + 1, p.y + y) -
+					                 _val(prev, p.x + x - 1, p.y + y));
+					a(k, 1) = 0.5 * (_val(prev, p.x + x, p.y + y + 1) -
+						             _val(prev, p.x + x, p.y + y - 1));
+					*/
 					b[k] = _val(next, p.x + x + u, p.y + y + v) -
 						   _val(prev, p.x + x, p.y + y);
 					++k;
@@ -162,8 +186,72 @@ void lk_optical_flow_single2(
 	}
 }
 
-const std::string seq1_path = "seq/LK1.png";
-const std::string seq2_path = "seq/LK2.png";
+void lk_optical_flow_multi1(
+	const cv::Mat&                   prev,
+	const cv::Mat&                   next,
+	const std::vector<cv::Point2f>&  pts_prev,
+	size_t                           win_sz,
+	std::vector<cv::Point2f>&        pts_next,
+	std::vector<uint8_t>&            status,
+	size_t                           level    = 4,
+	bool                             use_init = false
+) {
+	assert(0 < level && level < 10);
+
+	const double pyramid_scale = 0.5;
+	const double top_scale = std::pow(pyramid_scale, level - 1);
+	const size_t n_points = pts_prev.size();
+
+	/**
+	 * @brief create pyramid
+	 */
+	std::vector<cv::Mat> pyramid_prev, pyramid_next;
+	pyramid_prev.push_back(prev);
+	pyramid_next.push_back(next);
+	for (auto i = 1; i < level; ++i) {
+		cv::Mat tmp_prev, tmp_next;
+		cv::resize(pyramid_prev[i - 1], tmp_prev, cv::Size(), pyramid_scale, pyramid_scale);
+		cv::resize(pyramid_next[i - 1], tmp_next, cv::Size(), pyramid_scale, pyramid_scale);
+		pyramid_prev.push_back(tmp_prev);
+		pyramid_next.push_back(tmp_next);
+	}
+
+	std::vector<cv::Point2f> tmp_pts_prev, tmp_pts_next;
+	for (auto i = 0; i < n_points; ++i) {
+		tmp_pts_prev.push_back(pts_prev[i] * top_scale);
+		if (use_init) { tmp_pts_next.push_back(pts_next[i] * top_scale); }
+		else /*  */   { tmp_pts_next.push_back(pts_prev[i] * top_scale); }
+	}
+
+	/**
+	 * @brief perform single level LK algorithm to each layer of pyramid.
+	 */
+	for (auto i = level; 0 < i; --i) {
+
+		status.clear();
+		size_t current_level = i - 1;
+
+		//lk_optical_flow_single1(
+		lk_optical_flow_single2(
+			pyramid_prev[current_level], pyramid_next[current_level],
+			tmp_pts_prev, 21, tmp_pts_next, status, true
+		);
+
+		if (0 != current_level) {
+			for (auto& each : tmp_pts_prev) {
+				each /= pyramid_scale;
+			}
+			for (auto& each : tmp_pts_next) {
+				each /= pyramid_scale;
+			}
+		}
+	}
+
+	pts_next.swap(tmp_pts_next);
+}
+
+const std::string seq1_path = "seq/gry01.jpg";
+const std::string seq2_path = "seq/gry02.jpg";
 
 int main(int argc, char** argv) {
 //	const int n_images = 13;
@@ -212,7 +300,7 @@ int main(int argc, char** argv) {
 		}
 
 		cv::imshow("seq2_single1", seq2_clone);
-		cv::waitKey();
+		//cv::waitKey();
 	}
 
 	/**
@@ -233,7 +321,28 @@ int main(int argc, char** argv) {
 		}
 
 		cv::imshow("seq2_single2", seq2_clone);
-		cv::waitKey();
+		//cv::waitKey();
+	}
+
+	/**
+	 * @brief self-implementation of multi-level LK optical flow
+	 *
+	 */ {
+		cv::Mat seq2_clone = seq2.clone();
+
+		std::vector<cv::Point2f> pts2;
+		std::vector<uint8_t> status;
+
+		lk_optical_flow_multi1(seq1, seq2, pts1, 21, pts2, status);
+
+		for (auto i = 0; i < status.size(); ++i) {
+			if (!status[i]) { continue; }
+			cv::circle(seq2_clone, pts2[i], 2, cv::Scalar_<uint8_t>(255), 2);
+			cv::line(seq2_clone, pts1[i], pts2[i], cv::Scalar_<uint8_t>(255), 1);
+		}
+
+		cv::imshow("seq2_multi1", seq2_clone);
+		//cv::waitKey();
 	}
 
 	/**
