@@ -180,7 +180,7 @@ int icp_gauss_newton(
 		//if (0 < iter && prev_loss < loss) { std::cerr << "loss is increasing." << std::endl; break; }
 		if (dx.norm() < 1e-8) { break; }
 
-		vec3d delta_t = jacobian(dx);
+		vec3d delta_t = jacobian(dx); //std::cout << delta_t.transpose() << ", " << dx.head<3>().transpose() << std::endl;
 		mat3d delta_r = rodriguez(dx.tail<3>());
 
 		translation = delta_r * translation + delta_t;
