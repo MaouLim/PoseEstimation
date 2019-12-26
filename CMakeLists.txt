@@ -28,5 +28,8 @@ target_link_libraries(PoseEstimation2D3D ${OpenCV_LIBS})
 add_executable(PoseEstimation3D3D pose_estimation_3d3d.cpp)
 target_link_libraries(PoseEstimation3D3D ${OpenCV_LIBS})
 
-add_executable(OpticalFlow optical_flow.cpp)
-target_link_libraries(OpticalFlow ${OpenCV_LIBS})
+add_executable(LKOpticalFlow lk_optical_flow.cpp)
+target_link_libraries(LKOpticalFlow ${OpenCV_LIBS})
+
+add_executable(HSOpticalFlow hs_optical_flow.cpp)
+target_link_libraries(HSOpticalFlow ${OpenCV_LIBS})

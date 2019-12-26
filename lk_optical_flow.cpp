@@ -186,7 +186,7 @@ void lk_optical_flow_single2(
 	}
 }
 
-void lk_optical_flow_multi1(
+void lk_optical_flow_multi(
 	const cv::Mat&                   prev,
 	const cv::Mat&                   next,
 	const std::vector<cv::Point2f>&  pts_prev,
@@ -333,7 +333,7 @@ int main(int argc, char** argv) {
 		std::vector<cv::Point2f> pts2;
 		std::vector<uint8_t> status;
 
-		lk_optical_flow_multi1(seq1, seq2, pts1, 21, pts2, status);
+		lk_optical_flow_multi(seq1, seq2, pts1, 21, pts2, status);
 
 		for (auto i = 0; i < status.size(); ++i) {
 			if (!status[i]) { continue; }
