@@ -33,3 +33,6 @@ target_link_libraries(LKOpticalFlow ${OpenCV_LIBS})
 
 add_executable(HSOpticalFlow hs_optical_flow.cpp)
 target_link_libraries(HSOpticalFlow ${OpenCV_LIBS})
+
+add_executable(DirectMethod pose_estimation_direct_method.cpp)
+target_link_libraries(DirectMethod ${OpenCV_LIBS})
